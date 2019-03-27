@@ -23,12 +23,9 @@ defined('ALLOW_UPDATE') or define('ALLOW_UPDATE', TRUE);
 //网站名称
 defined('WEBSITE_NAME') or define('WEBSITE_NAME', '接口文档');
 
-//网站主题
-defined('WEBSITE_THEME') or define('WEBSITE_THEME', '接口文档管理');
-
 //数据表前缀
-defined('DB_TABLE_PREFIXION') or define('DB_TABLE_PREFIXION', 'eo');
+defined('DB_TABLE_PREFIXION') or define('DB_TABLE_PRIFIXION', 'eo');
 
-//语言 中文简体:zh-cn 中文繁體:zh-hk English:en
-defined('LANGUAGE') or define ('LANGUAGE', 'zh-cn');
+//语言
+defined('LANGUAGE') or define('LANGUAGE', 'zh-cn')
 ?>

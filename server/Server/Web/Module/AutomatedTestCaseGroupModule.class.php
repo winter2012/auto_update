@@ -43,9 +43,10 @@ class AutomatedTestCaseGroupModule
      * @param $user_id
      * @param $group_name
      * @param $parent_group_id
+     * @param $isChild
      * @return bool
      */
-    public function addGroup(&$project_id, &$user_id, &$group_name, &$parent_group_id)
+    public function addGroup(&$project_id, &$user_id, &$group_name, &$parent_group_id, &$isChild)
     {
         $project_dao = new ProjectDao();
         $group_dao = new AutomatedTestCaseGroupDao();
@@ -62,7 +63,7 @@ class AutomatedTestCaseGroupModule
                 return FALSE;
             }
             // 有父分组
-            $group_id = $group_dao->addChildGroup($project_id, $group_name, $parent_group_id);
+            $group_id = $group_dao->addChildGroup($project_id, $group_name, $parent_group_id, $isChild);
             $parent_group_name = $group_dao->getGroupName($parent_group_id);
             $desc = "添加用例子分组:'{$parent_group_name}>>{$group_name}'";
         }
@@ -129,9 +130,10 @@ class AutomatedTestCaseGroupModule
      * @param $group_id
      * @param $group_name
      * @param $parent_group_id
+     * @param $isChild
      * @return bool
      */
-    public function editGroup(&$user_id, &$group_id, &$group_name, &$parent_group_id)
+    public function editGroup(&$user_id, &$group_id, &$group_name, &$parent_group_id, &$isChild)
     {
         $group_dao = new AutomatedTestCaseGroupDao();
         if (!($project_id = $group_dao->checkAutomatedTestCaseGroupPermission($group_id, $user_id))) {
@@ -140,7 +142,7 @@ class AutomatedTestCaseGroupModule
         if ($parent_group_id && !$group_dao->checkAutomatedTestCaseGroupPermission($parent_group_id, $user_id)) {
             return FALSE;
         }
-        if ($group_dao->editGroup($project_id, $group_id, $group_name, $parent_group_id)) {
+        if ($group_dao->editGroup($project_id, $group_id, $group_name, $parent_group_id, $isChild)) {
             // 更新项目的更新时间
             $project_dao = new ProjectDao();
             $project_dao->updateProjectUpdateTime($project_id);
@@ -189,7 +191,7 @@ class AutomatedTestCaseGroupModule
             return FALSE;
         } else {
             $data = json_encode($group_dao->getTestCaseGroupData($group_id));
-            $fileName = 'eolinker_test_case_group_dump_' . $_SESSION['userName'] . '_' . time() . '.export';
+            $fileName = 'eoLinker_test_case_group_dump_' . $_SESSION['userName'] . '_' . time() . '.export';
             if (file_put_contents(realpath('./dump') . DIRECTORY_SEPARATOR . $fileName, $data)) {
                 //将操作写入日志
                 $log_dao = new ProjectLogDao();

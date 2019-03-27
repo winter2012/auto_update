@@ -54,6 +54,7 @@ class AutomatedTestCaseGroupController
         $group_name = securelyInput('groupName');
         // 父分组ID
         $parent_group_id = securelyInput('parentGroupID', NULL);
+        $isChild = securelyInput('isChild', 0);
 
         if (!preg_match('/^[0-9]{1,11}$/', $project_id)) {
             $this->returnJson['statusCode'] = '850005';
@@ -71,7 +72,7 @@ class AutomatedTestCaseGroupController
                 $this->returnJson['statusCode'] = '120007';
             } else {
                 $service = new AutomatedTestCaseGroupModule();
-                $result = $service->addGroup($project_id, $this->user_id, $group_name, $parent_group_id);
+                $result = $service->addGroup($project_id, $this->user_id, $group_name, $parent_group_id, $isChild);
                 // 验证结果
                 if ($result) {
                     // 添加项目用例分组成功
@@ -156,6 +157,7 @@ class AutomatedTestCaseGroupController
         $group_name = securelyInput('groupName');
         // 父分组ID
         $parent_group_id = securelyInput('parentGroupID', NULL);
+        $isChild = securelyInput('isChild');
 
         // 判断分组ID和组名格式是否合法
         if ($name_length < 1 && $name_length > 32) {
@@ -173,7 +175,7 @@ class AutomatedTestCaseGroupController
             if ($user_type < 0 || $user_type > 2) {
                 $this->returnJson['statusCode'] = '120007';
             } else {
-                $result = $service->editGroup($this->user_id, $group_id, $group_name, $parent_group_id);
+                $result = $service->editGroup($this->user_id, $group_id, $group_name, $parent_group_id, $isChild);
                 if ($result) {
                     // 修改用例分组成功
                     $this->returnJson['statusCode'] = '000000';

@@ -100,16 +100,37 @@ class DatabaseController
      * Get all database list
      * 获取数据库列表
      */
-    public function getDatabase()
+    public function getDatabaseList()
     {
         $service = new DatabaseModule;
-        $result = $service->getDatabase();
+        $result = $service->getDatabaseList();
 
         if ($result) {
             $this->returnJson['statusCode'] = '000000';
             $this->returnJson['databaseList'] = $result;
         } else {
             $this->returnJson['statusCode'] = '220006';
+        }
+        exitOutput($this->returnJson);
+    }
+
+    /**
+     * 获取数据库详情
+     */
+    public function getDatabase()
+    {
+        $dbID = securelyInput('dbID');
+        if (!preg_match('/^[0-9]{1,11}$/', $dbID)) {
+            $this->returnJson['statusCode'] = '220004';
+        } else {
+            $service = new DatabaseModule();
+            $result = $service->getDatabase($dbID);
+            if ($result) {
+                $this->returnJson['statusCode'] = '000000';
+                $this->returnJson = array_merge($this->returnJson, $result);
+            } else {
+                $this->returnJson['statusCode'] = '220006';
+            }
         }
         exitOutput($this->returnJson);
     }
@@ -192,19 +213,16 @@ class DatabaseController
      */
     public function importDatabase()
     {
-        $dbID = securelyInput('dbID');
-        $module = new DatabaseModule();
-        $userType = $module->getUserType($dbID);
-        if ($userType < 0 || $userType > 2) {
-            $this->returnJson['statusCode'] = '120007';
-            exitOutput($this->returnJson);
-        }
+        $fileName = securelyInput("fileName");
+        $name_length = mb_strlen(quickInput('fileName'), 'utf8');
         $dumpSql = quickInput('dumpSql');
-        //illegal database ID
-        //数据库ID格式非法
-        if (!preg_match('/^[0-9]{1,11}$/', $dbID)) {
-            $this->returnJson['statusCode'] = '230001';
+        // 数据库名称格式非法
+        if (!($name_length >= 1 && $name_length <= 32)) {
+            $this->returnJson['statusCode'] = '220001';
         } else {
+            $dbName = array();
+            preg_match("/Source Database.*:[\\s\\S](.*?)[\r\n]+/", $dumpSql, $dbName);
+            $db_name = $dbName[1] ? $dbName[1]:$fileName;
             $tables = array();
             //match all statement blocks which create tables using regex
             //正则匹配出所有创建表的语句块
@@ -250,7 +268,7 @@ class DatabaseController
 
             if (count($tables) > 0) {
                 $service = new DatabaseModule;
-                $result = $service->importDatabase($dbID, $tables);
+                $result = $service->importDatabase($db_name, $tables);
                 if ($result) {
                     $this->returnJson['statusCode'] = '000000';
                     //$this -> returnJson['result'] =$result;
@@ -270,6 +288,74 @@ class DatabaseController
     }
 
     /**
+     * 导入oracle数据库
+     */
+    public function importOracleDatabase()
+    {
+        $fileName = securelyInput("fileName");
+        $name_length = mb_strlen(quickInput('fileName'), 'utf8');
+        $dumpSql = quickInput('dumpSql');
+        // 数据库名称格式非法
+        if(! ($name_length >= 1 && $name_length <= 32))
+        {
+            $this->returnJson['statusCode'] = '220001';
+        }
+        else
+        {
+            $tables = array ();
+            // 正则匹配出所有创建表的语句块
+            $sql = array ();
+            preg_match_all('/CREATE.*?TABLE[\\s\\S]+?\\n\\)/', $dumpSql, $sql);
+
+            foreach ($sql[0] as $tableSql)
+            {
+                // 正则提取表名，结果为array，取索引为1
+                $tableName = array ();
+                preg_match('/".*?"."(.*?)"/', $tableSql, $tableName);
+                // 正则提取表注释
+                $table_desc = array();
+                preg_match('/COMMENT ON TABLE.*?'. $tableName[0].'.*?\'(.*?)\'.*?;/', $dumpSql , $table_desc);
+                // 正则匹配出表所有字段注释
+                $comment_sql = array();
+                preg_match_all('/COMMENT ON COLUMN.*?'. $tableName[0].'.*?;/', $dumpSql, $comment_sql);
+                // 正则匹配出表所有主键
+                $primary_key_sql = array();
+                preg_match_all('/ALTER TABLE.*?'. $tableName[0]. '.*?ADD PRIMARY KEY.*?;/', $dumpSql, $primary_key_sql);
+                // 截取表的字段信息
+                $tableField = substr(substr($tableSql, strpos($tableSql, '(') + 1), 0, strlen($tableSql) - strpos($tableSql, '(') - 3);
+                $tables[] = array (
+                    'tableName' => $tableName[1],
+                    'tableDesc' => $table_desc[1],
+                    'tableField' => $tableField,
+                    'commentSql' => implode('',$comment_sql[0]),
+                    'primaryKeySql' => implode('',$primary_key_sql[0])
+                );
+            }
+
+            if(count($tables) > 0)
+            {
+                $service = new DatabaseModule();
+                $result = $service -> importOracleDatabase($fileName, $tables);
+                if($result)
+                {
+                    $this->returnJson['statusCode'] = '000000';
+                }
+                else
+                {
+                    // 导入失败
+                    $this->returnJson['statusCode'] = '220000';
+                }
+            }
+            else
+            {
+                // 导入的sql文件未匹配到创建表的语句块
+                $this->returnJson['statusCode'] = '220005';
+            }
+        }
+        exitOutput($this->returnJson);
+    }
+
+    /**
      * Import database by database's data which export from the api named exportDatabase
      * 导入数据库
      */
@@ -283,7 +369,7 @@ class DatabaseController
             $this->returnJson['statusCode'] = '220010';
         } else {
             $service = new DatabaseModule;
-            $result = $service->importDatabseByJson($data);
+            $result = $service->importDatabaseByJson($data);
             if ($result) {
                 $this->returnJson['statusCode'] = '000000';
             } else {

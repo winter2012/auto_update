@@ -1,21 +1,19 @@
 <?php
-
 /**
- * @name eolinker ams open source，eolinker开源版本
- * @link https://www.eolinker.com/
+ * @name eolinker open source，eolinker开源版本
+ * @link https://www.eolinker.com
  * @package eolinker
- * @author www.eolinker.com 广州银云信息科技有限公司 2015-2017
- * eoLinker是目前全球领先、国内最大的在线API接口管理平台，提供自动生成API文档、API自动化测试、Mock测试、团队协作等功能，旨在解决由于前后端分离导致的开发效率低下问题。
- * 如在使用的过程中有任何问题，欢迎加入用户讨论群进行反馈，我们将会以最快的速度，最好的服务态度为您解决问题。
+ * @author www.eolinker.com 广州银云信息科技有限公司 2015-2018
+
+ * eolinker，业内领先的Api接口管理及测试平台，为您提供最专业便捷的在线接口管理、测试、维护以及各类性能测试方案，帮助您高效开发、安全协作。
+ * 如在使用的过程中有任何问题，可通过http://help.eolinker.com寻求帮助
  *
- * eoLinker AMS开源版的开源协议遵循Apache License 2.0，如需获取最新的eolinker开源版以及相关资讯，请访问:https://www.eolinker.com/#/os/download
+ * 注意！eolinker开源版本遵循GPL V3开源协议，仅供用户下载试用，禁止“一切公开使用于商业用途”或者“以eoLinker开源版本为基础而开发的二次版本”在互联网上流通。
+ * 注意！一经发现，我们将立刻启用法律程序进行维权。
+ * 再次感谢您的使用，希望我们能够共同维护国内的互联网开源文明和正常商业秩序。
  *
- * 官方网站：https://www.eolinker.com/
- * 官方博客以及社区：http://blog.eolinker.com/
- * 使用教程以及帮助：http://help.eolinker.com/
- * 商务合作邮箱：market@eolinker.com
- * 用户讨论QQ群：284421832
  */
+
 class ProjectDao
 {
 
@@ -220,7 +218,8 @@ class ProjectDao
             $userID
         ));
         // 获取接口数
-        $api_count = $db->prepareExecute('SELECT COUNT(eo_api.apiID) AS count FROM eo_api WHERE eo_api.projectID = ? AND eo_api.removed = 0;', array(
+        $api_count = $db->prepareExecute('SELECT COUNT(eo_api.apiID) AS count FROM eo_api WHERE eo_api.projectID = ? AND eo_api.removed = 0 AND eo_api.groupID IN (SELECT groupID FROM eo_api_group WHERE projectID = ?);', array(
+            $projectID,
             $projectID
         ));
         $project_info['apiCount'] = $api_count['count'] ? $api_count['count'] : 0;
@@ -438,8 +437,30 @@ class ProjectDao
                     $l = 0;
                     foreach ($apiList as $api) {
                         $dumpJson['apiGroupList'][$i]['apiGroupChildList'][$k]['apiList'][$l] = json_decode($api['apiJson'], TRUE);
-                        // $dumpJson['apiGroupList'][$i]['apiGroupChildList'][$k]['apiList'][$l]['baseInfo']['starred'] = $api['starred'];
+                        $dumpJson['apiGroupList'][$i]['apiGroupChildList'][$k]['apiList'][$l]['baseInfo']['starred'] = $api['starred'];
                         ++$l;
+                    }
+                    $dumpJson['apiGroupList'][$i]['apiGroupChildList'][$k]['apiGroupChildList'] = array();
+                    $groupChildList = $db->prepareExecuteAll('SELECT * FROM eo_api_group WHERE eo_api_group.projectID = ? AND eo_api_group.parentGroupID = ?;', array(
+                        $project_id,
+                        $apiChildGroup['groupID']
+                    ));
+                    $o = 0;
+                    foreach ($groupChildList as $group) {
+                        $dumpJson['apiGroupList'][$i]['apiGroupChildList'][$i]['apiGroupChildList'][$o] = $group;
+                        // 获取接口信息
+                        $apiList = $db->prepareExecuteAll("SELECT * FROM eo_api_cache WHERE eo_api_cache.projectID = ? AND eo_api_cache.groupID = ?;", array(
+                            $project_id,
+                            $group['groupID']
+                        ));
+                        $dumpJson['apiGroupList'][$i]['apiGroupChildList'][$k]['apiGroupChildList'][$o]['apiList'] = array();
+                        $p = 0;
+                        foreach ($apiList as $api) {
+                            $dumpJson['apiGroupList'][$i]['apiGroupChildList'][$k]['apiGroupChildList'][$o]['apiList'][$l] = json_decode($api['apiJson'], TRUE);
+                            $dumpJson['apiGroupList'][$i]['apiGroupChildList'][$k]['apiGroupChildList'][$o]['apiList'][$l]['baseInfo']['starred'] = $api['starred'];
+                            ++$p;
+                        }
+                        ++$o;
                     }
                     ++$k;
                 }
@@ -488,6 +509,30 @@ class ProjectDao
                     foreach ($statusCodeList as $statusCode) {
                         $dumpJson['statusCodeGroupList'][$i]['statusCodeGroupChildList'][$k]['statusCodeList'][$l] = $statusCode;
                         ++$l;
+                    }
+
+                    $secondStatusCodeGroupChildList = $db->prepareExecuteAll("SELECT * FROM eo_project_status_code_group WHERE eo_project_status_code_group.projectID = ? AND parentGroupID = ?;", array(
+                        $project_id,
+                        $statusCodeChildGroup['groupID']
+                    ));
+                    $dumpJson['statusCodeGroupList'][$i]['statusCodeGroupChildList'][$k]['statusCodeGroupChildList'] = array();
+                    if ($secondStatusCodeGroupChildList) {
+                        $m = 0;
+                        foreach ($secondStatusCodeGroupChildList as $secondStatusCodeChildGroup) {
+                            $dumpJson['statusCodeGroupList'][$i]['statusCodeGroupChildList'][$k]['statusCodeGroupChildList'][$m] = $secondStatusCodeChildGroup;
+                            // 获取状态码信息
+                            $statusCodeList = $db->prepareExecuteAll("SELECT * FROM eo_project_status_code WHERE eo_project_status_code.groupID = ?;", array(
+                                $statusCodeChildGroup['groupID']
+                            ));
+
+                            $dumpJson['statusCodeGroupList'][$i]['statusCodeGroupChildList'][$k]['statusCodeGroupChildList'][$m]['statusCodeList'] = array();
+                            $l = 0;
+                            foreach ($statusCodeList as $statusCode) {
+                                $dumpJson['statusCodeGroupList'][$i]['statusCodeGroupChildList'][$k]['statusCodeGroupChildList'][$m]['statusCodeList'][$l] = $statusCode;
+                                ++$l;
+                            }
+                            ++$m;
+                        }
                     }
                     ++$k;
                 }
@@ -554,10 +599,123 @@ class ProjectDao
                         $dumpJson['pageGroupList'][$i]['pageGroupChildList'][$k]['pageList'][$l]['groupName'] = $documentChildGroup['groupName'];
                         $l++;
                     }
+                    $secondDocumentGroupChildList = $db->prepareExecuteAll('SELECT eo_project_document_group.* FROM eo_project_document_group WHERE eo_project_document_group.projectID = ? AND eo_project_document_group.parentGroupID = ? AND eo_project_document_group.isChild = 2;', array(
+                        $project_id,
+                        $documentGroup['groupID']
+                    ));
+                    if ($secondDocumentGroupChildList) {
+                        $m = 0;
+                        foreach ($secondDocumentGroupChildList as $secondDocumentChildGroup) {
+                            $dumpJson['pageGroupList'][$i]['pageGroupChildList'][$k]['pageGroupChildList'][$m] = $secondDocumentChildGroup;
+                            $dumpJson['pageGroupList'][$i]['pageGroupChildList'][$k]['pageGroupChildList'][$m]['pageList'] = array();
+                            //获取文档信息
+                            $documentList = $db->prepareExecuteAll('SELECT eo_project_document.documentID AS pageID,eo_project_document.groupID,eo_project_document.projectID,eo_project_document.contentType,eo_project_document.contentRaw,eo_project_document.content,eo_project_document.title,eo_project_document.updateTime,eo_project_document.userID AS authorID FROM eo_project_document WHERE eo_project_document.groupID = ?;', array(
+                                $secondDocumentChildGroup['groupID']
+                            ));
+                            $l = 0;
+                            foreach ($documentList as $document) {
+                                $dumpJson['pageGroupList'][$i]['pageGroupChildList'][$k]['pageGroupChildList'][$m]['pageList'][$l] = $document;
+                                $dumpJson['pageGroupList'][$i]['pageGroupChildList'][$k]['pageGroupChildList'][$m]['pageList'][$l]['groupName'] = $secondDocumentChildGroup['groupName'];
+                                $l++;
+                            }
+                        }
+                    }
                     $k++;
                 }
             }
             $i++;
+        }
+
+        $dumpJson['caseGroupList'] = array();
+        // 获取用例分组信息
+        $case_group_list = $db->prepareExecuteAll("SELECT * FROM eo_project_test_case_group WHERE eo_project_test_case_group.projectID = ? AND eo_project_test_case_group.isChild = ?;", array(
+            $project_id,
+            0
+        ));
+        if ($case_group_list) {
+            $i = 0;
+            foreach ($case_group_list as $caseGroup) {
+                $dumpJson['caseGroupList'][$i] = $caseGroup;
+                $case_list = $db->prepareExecuteAll("SELECT eo_project_test_case.caseID,eo_project_test_case.caseName,eo_project_test_case.caseDesc,eo_project_test_case.caseType,eo_project_test_case.caseCode FROM eo_project_test_case WHERE eo_project_test_case.groupID = ? AND eo_project_test_case.projectID = ?", array(
+                    $caseGroup['groupID'],
+                    $project_id
+                ));
+                if ($case_list) {
+                    $j = 0;
+                    $dumpJson['caseGroupList'][$i]['caseList'] = array();
+                    foreach ($case_list as $case) {
+                        $dumpJson['caseGroupList'][$i]['caseList'][$j] = $case;
+                        $dumpJson['caseGroupList'][$i]['caseList'][$j]['groupName'] = $caseGroup['groupName'];
+                        $dumpJson['caseGroupList'][$i]['caseList'][$j]['beforeCaseList'] = array();
+                        $dumpJson['caseGroupList'][$i]['caseList'][$j]['caseSingleList'] = $db->prepareExecuteAll('SELECT eo_project_test_case_single.connID,eo_project_test_case_single.caseData,eo_project_test_case_single.caseCode,eo_project_test_case_single.statusCode,eo_project_test_case_single.matchType,eo_project_test_case_single.matchRule,eo_project_test_case_single.apiName,eo_project_test_case_single.apiURI,eo_project_test_case_single.apiRequestType,eo_project_test_case_single.orderNumber FROM eo_project_test_case_single WHERE caseID = ?;', array(
+                            $case['caseID']
+                        ));
+                        ++$j;
+                    }
+                }
+                $child_group_list = $db->prepareExecuteAll('SELECT eo_project_test_case_group.groupID,eo_project_test_case_group.groupName FROM eo_project_test_case_group WHERE eo_project_test_case_group.parentGroupID = ? AND eo_project_test_case_group.projectID = ? AND eo_project_test_case_group.isChild = ?;', array(
+                    $caseGroup['groupID'],
+                    $project_id,
+                    1
+                ));
+                if ($child_group_list) {
+                    $k = 0;
+                    $dumpJson['caseGroupList'][$i]['caseChildGroupList'] = array();
+                    foreach ($child_group_list as $child_group) {
+                        $dumpJson['caseGroupList'][$i]['caseChildGroupList'][$k] = $child_group;
+                        $case_list = $db->prepareExecuteAll("SELECT eo_project_test_case.caseID,eo_project_test_case.caseName,eo_project_test_case.caseDesc,eo_project_test_case.caseType,eo_project_test_case.caseCode FROM eo_project_test_case WHERE eo_project_test_case.groupID = ? AND eo_project_test_case.projectID = ?", array(
+                            $child_group['groupID'],
+                            $project_id
+                        ));
+                        if ($case_list) {
+                            $x = 0;
+                            $dumpJson['caseGroupList'][$i]['caseChildGroupList'][$k]['caseList'] = array();
+                            foreach ($case_list as $case) {
+                                $dumpJson['caseGroupList'][$i]['caseChildGroupList'][$k]['caseList'][$x] = $case;
+                                $dumpJson['caseGroupList'][$i]['caseChildGroupList'][$k]['caseList'][$x]['groupName'] = $child_group['groupName'];
+                                $dumpJson['caseGroupList'][$i]['caseChildGroupList'][$k]['caseList'][$x]['beforeCaseList'] = array();
+                                $dumpJson['caseGroupList'][$i]['caseChildGroupList'][$k]['caseList'][$x]['caseSingleList'] = $db->prepareExecuteAll('SELECT eo_project_test_case_single.connID,eo_project_test_case_single.caseData,eo_project_test_case_single.caseCode,eo_project_test_case_single.statusCode,eo_project_test_case_single.matchType,eo_project_test_case_single.matchRule,eo_project_test_case_single.apiName,eo_project_test_case_single.apiURI,eo_project_test_case_single.apiRequestType,eo_project_test_case_single.orderNumber FROM eo_project_test_case_single WHERE caseID = ?;', array(
+                                    $case['caseID']
+                                ));
+                                ++$x;
+                            }
+                        }
+                        $second_child_group_list = $db->prepareExecuteAll('SELECT eo_project_test_case_group.groupID,eo_project_test_case_group.groupName FROM eo_project_test_case_group WHERE eo_project_test_case_group.parentGroupID = ? AND eo_project_test_case_group.projectID = ? AND eo_project_test_case_group.isChild = ?;', array(
+                            $child_group['groupID'],
+                            $project_id,
+                            2
+                        ));
+                        if ($second_child_group_list) {
+                            $m = 0;
+                            $dumpJson['caseGroupList'][$i]['caseChildGroupList'] = array();
+                            foreach ($second_child_group_list as $second_child_group) {
+                                $dumpJson['caseGroupList'][$i]['caseChildGroupList'][$k]['caseChildGroupList'][$m] = $second_child_group;
+                                $case_list = $db->prepareExecuteAll("SELECT eo_project_test_case.caseID,eo_project_test_case.caseName,eo_project_test_case.caseDesc,eo_project_test_case.caseType,eo_project_test_case.caseCode FROM eo_project_test_case WHERE eo_project_test_case.groupID = ? AND eo_project_test_case.projectID = ?", array(
+                                    $second_child_group['groupID'],
+                                    $project_id
+                                ));
+                                if ($case_list) {
+                                    $x = 0;
+                                    $dumpJson['caseGroupList'][$i]['caseChildGroupList'][$k]['caseChildGroupList'][$m]['caseList'] = array();
+                                    foreach ($case_list as $case) {
+                                        $dumpJson['caseGroupList'][$i]['caseChildGroupList'][$k]['caseChildGroupList'][$m]['caseList'][$x] = $case;
+                                        $dumpJson['caseGroupList'][$i]['caseChildGroupList'][$k]['caseChildGroupList'][$m]['caseList'][$x]['groupName'] = $second_child_group['groupName'];
+                                        $dumpJson['caseGroupList'][$i]['caseChildGroupList'][$k]['caseChildGroupList'][$m]['caseList'][$x]['beforeCaseList'] = array();
+                                        $dumpJson['caseGroupList'][$i]['caseChildGroupList'][$k]['caseChildGroupList'][$m]['caseList'][$x]['caseSingleList'] = $db->prepareExecuteAll('SELECT eo_project_test_case_single.connID,eo_project_test_case_single.caseData,eo_project_test_case_single.caseCode,eo_project_test_case_single.statusCode,eo_project_test_case_single.matchType,eo_project_test_case_single.matchRule,eo_project_test_case_single.apiName,eo_project_test_case_single.apiURI,eo_project_test_case_single.apiRequestType,eo_project_test_case_single.orderNumber FROM eo_project_test_case_single WHERE caseID = ?;', array(
+                                            $case['caseID']
+                                        ));
+                                        ++$x;
+                                    }
+                                }
+
+                                ++$m;
+                            }
+                        }
+                        ++$k;
+                    }
+                }
+                ++$i;
+            }
         }
 
         if (empty($dumpJson))

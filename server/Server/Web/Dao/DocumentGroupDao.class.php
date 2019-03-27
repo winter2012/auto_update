@@ -1,21 +1,19 @@
 <?php
-
 /**
- * @name eolinker ams open source，eolinker开源版本
- * @link https://www.eolinker.com/
+ * @name eolinker open source，eolinker开源版本
+ * @link https://www.eolinker.com
  * @package eolinker
- * @author www.eolinker.com 广州银云信息科技有限公司 2015-2017
- * eoLinker是目前全球领先、国内最大的在线API接口管理平台，提供自动生成API文档、API自动化测试、Mock测试、团队协作等功能，旨在解决由于前后端分离导致的开发效率低下问题。
- * 如在使用的过程中有任何问题，欢迎加入用户讨论群进行反馈，我们将会以最快的速度，最好的服务态度为您解决问题。
+ * @author www.eolinker.com 广州银云信息科技有限公司 2015-2018
+
+ * eolinker，业内领先的Api接口管理及测试平台，为您提供最专业便捷的在线接口管理、测试、维护以及各类性能测试方案，帮助您高效开发、安全协作。
+ * 如在使用的过程中有任何问题，可通过http://help.eolinker.com寻求帮助
  *
- * eoLinker AMS开源版的开源协议遵循Apache License 2.0，如需获取最新的eolinker开源版以及相关资讯，请访问:https://www.eolinker.com/#/os/download
+ * 注意！eolinker开源版本遵循GPL V3开源协议，仅供用户下载试用，禁止“一切公开使用于商业用途”或者“以eoLinker开源版本为基础而开发的二次版本”在互联网上流通。
+ * 注意！一经发现，我们将立刻启用法律程序进行维权。
+ * 再次感谢您的使用，希望我们能够共同维护国内的互联网开源文明和正常商业秩序。
  *
- * 官方网站：https://www.eolinker.com/
- * 官方博客以及社区：http://blog.eolinker.com/
- * 使用教程以及帮助：http://help.eolinker.com/
- * 商务合作邮箱：market@eolinker.com
- * 用户讨论QQ群：284421832
  */
+
 class DocumentGroupDao
 {
     /**
@@ -46,16 +44,18 @@ class DocumentGroupDao
      * @param $project_id int 项目ID
      * @param $parent_group_id int 父分组ID
      * @param $group_name string 分组名称
+     * @param $isChild
      * @return bool|int
      */
-    public function addChildGroup(&$project_id, &$group_name, &$parent_group_id)
+    public function addChildGroup(&$project_id, &$group_name, &$parent_group_id, &$isChild)
     {
         $db = getDatabase();
 
-        $db->prepareExecute('INSERT INTO eo_project_document_group (eo_project_document_group.groupName,eo_project_document_group.projectID,eo_project_document_group.parentGroupID,eo_project_document_group.isChild) VALUES (?,?,?,1);', array(
+        $db->prepareExecute('INSERT INTO eo_project_document_group (eo_project_document_group.groupName,eo_project_document_group.projectID,eo_project_document_group.parentGroupID,eo_project_document_group.isChild) VALUES (?,?,?,?);', array(
             $group_name,
             $project_id,
-            $parent_group_id
+            $parent_group_id,
+            $isChild
         ));
 
         $group_id = $db->getLastInsertID();
@@ -106,9 +106,27 @@ class DocumentGroupDao
                     $parentGroup['groupID']
                 ));
 
+                if (!empty($childGroup)) {
+                    foreach ($childGroup as &$group) {
+                        $child_group_list = $db->prepareExecuteAll('SELECT eo_project_document_group.groupID,eo_project_document_group.groupName,eo_project_document_group.parentGroupID FROM eo_project_document_group WHERE projectID = ? AND isChild = 2 AND parentGroupID = ? ORDER BY groupID ASC;', array(
+                            $project_id,
+                            $group['groupID']
+                        ));
+                        if (!empty($child_group_list)) {
+                            $group['childGroupList'] = $child_group_list;
+                        } else {
+                            $group['childGroupList'] = array();
+                        }
+                    }
+                }
+
+
                 //判断是否有子分组
-                if (!empty($childGroup))
+                if (!empty($childGroup)) {
                     $parentGroup['childGroupList'] = $childGroup;
+                } else {
+                    $parentGroup['childGroupList'] = array();
+                }
             }
         }
         if (empty($group_list)) {
@@ -127,9 +145,10 @@ class DocumentGroupDao
      * @param $group_id int 分组ID
      * @param $group_name string 分组名称
      * @param $parent_group_id int 父分组ID
+     * @param $isChild
      * @return bool
      */
-    public function editGroup(&$group_id, &$group_name, &$parent_group_id)
+    public function editGroup(&$group_id, &$group_name, &$parent_group_id, &$isChild)
     {
         $db = getDatabase();
 
@@ -141,9 +160,10 @@ class DocumentGroupDao
             ));
         } else {
             //有父分组
-            $db->prepareExecute('UPDATE eo_project_document_group SET eo_project_document_group.groupName = ?,eo_project_document_group.parentGroupID = ?,eo_project_document_group.isChild = 1 WHERE eo_project_document_group.groupID = ?;', array(
+            $db->prepareExecute('UPDATE eo_project_document_group SET eo_project_document_group.groupName = ?,eo_project_document_group.parentGroupID = ?,eo_project_document_group.isChild = ? WHERE eo_project_document_group.groupID = ?;', array(
                 $group_name,
                 $parent_group_id,
+                $isChild,
                 $group_id
             ));
         }
@@ -225,7 +245,7 @@ class DocumentGroupDao
             $project_id
         ));
         $result['groupName'] = $group['groupName'];
-        if ($group['isChild'] == 0) {
+        if ($group['isChild'] <= 1) {
             $child_group_list = $db->prepareExecuteAll('SELECT eo_project_document_group.groupID,eo_project_document_group.groupName FROM eo_project_document_group WHERE eo_project_document_group.parentGroupID = ? AND eo_project_document_group.projectID = ?', array(
                 $group_id,
                 $project_id
@@ -233,11 +253,28 @@ class DocumentGroupDao
             if ($child_group_list) {
                 $i = 0;
                 foreach ($child_group_list as $group) {
+                    $result['childGroupList'][$i]['groupID'] = $group['groupID'];
                     $result['childGroupList'][$i]['groupName'] = $group['groupName'];
                     $result['childGroupList'][$i]['pageList'] = $db->prepareExecuteAll("SELECT eo_project_document.contentType,eo_project_document.contentRaw,eo_project_document.content,eo_project_document.title FROM eo_project_document WHERE eo_project_document.groupID = ? AND eo_project_document.projectID = ?", array(
                         $group['groupID'],
                         $project_id
                     ));
+                    $group_list = $db->prepareExecuteAll('SELECT eo_project_document_group.groupID,eo_project_document_group.groupName FROM eo_project_document_group WHERE eo_project_document_group.parentGroupID = ? AND eo_project_document_group.projectID = ?', array(
+                        $group['groupID'],
+                        $project_id
+                    ));
+                    if ($group_list) {
+                        $j = 0;
+                        foreach ($group_list as $child_group) {
+                            $result['childGroupList'][$i]['childGroupList'][$j]['groupID'] = $child_group['groupID'];
+                            $result['childGroupList'][$i]['childGroupList'][$j]['groupName'] = $child_group['groupName'];
+                            $result['childGroupList'][$i]['childGroupList'][$j]['pageList'] = $db->prepareExecuteAll("SELECT eo_project_document.contentType,eo_project_document.contentRaw,eo_project_document.content,eo_project_document.title FROM eo_project_document WHERE eo_project_document.groupID = ? AND eo_project_document.projectID = ?", array(
+                                $child_group['groupID'],
+                                $project_id
+                            ));
+                            $j++;
+                        }
+                    }
                     $i++;
                 }
             }
@@ -319,6 +356,43 @@ class DocumentGroupDao
                             if ($db->getAffectRow() < 1)
 
                                 throw new \PDOException("addPage error");
+                        }
+                    }
+
+                    if ($child_group['childGroupList']) {
+                        $parent_id = $group_id;
+                        foreach ($child_group['childGroupList'] as $group) {
+                            // 插入分组
+                            $db->prepareExecute('INSERT INTO eo_project_document_group (eo_project_document_group.projectID,eo_project_document_group.groupName,eo_project_document_group.parentGroupID,eo_project_document_group.isChild) VALUES (?,?,?,?);', array(
+                                $project_id,
+                                $group['groupName'],
+                                $parent_id,
+                                2
+                            ));
+                            if ($db->getAffectRow() < 1) {
+                                throw new \PDOException("addPageGroup error");
+                            }
+
+                            $group_id = $db->getLastInsertID();
+                            if ($group['pageList']) {
+                                // 插入状态码
+                                foreach ($group['pageList'] as $page) {
+                                    $db->prepareExecute('INSERT INTO eo_project_document (eo_project_document.groupID,eo_project_document.projectID,eo_project_document.contentType,eo_project_document.contentRaw,eo_project_document.content,eo_project_document.title,eo_project_document.updateTime,eo_project_document.userID) VALUES (?,?,?,?,?,?,?,?);', array(
+                                        $group_id,
+                                        $project_id,
+                                        $page['contentType'],
+                                        $page['contentRaw'],
+                                        $page['content'],
+                                        $page['title'],
+                                        date('Y-m-d H:i:s'),
+                                        $user_id
+                                    ));
+
+                                    if ($db->getAffectRow() < 1)
+
+                                        throw new \PDOException("addPage error");
+                                }
+                            }
                         }
                     }
                 }

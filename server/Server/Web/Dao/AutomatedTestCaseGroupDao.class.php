@@ -46,16 +46,18 @@ class AutomatedTestCaseGroupDao
      * @param $project_id
      * @param $group_name
      * @param $parent_group_id
+     * @param $isChild
      * @return bool
      */
-    public function addChildGroup(&$project_id, &$group_name, &$parent_group_id)
+    public function addChildGroup(&$project_id, &$group_name, &$parent_group_id, &$isChild)
     {
         $db = getDatabase();
 
-        $db->prepareExecute('INSERT INTO eo_project_test_case_group (eo_project_test_case_group.groupName,eo_project_test_case_group.projectID,eo_project_test_case_group.parentGroupID,eo_project_test_case_group.isChild) VALUES (?,?,?,1);', array(
+        $db->prepareExecute('INSERT INTO eo_project_test_case_group (eo_project_test_case_group.groupName,eo_project_test_case_group.projectID,eo_project_test_case_group.parentGroupID,eo_project_test_case_group.isChild) VALUES (?,?,?,?);', array(
             $group_name,
             $project_id,
-            $parent_group_id
+            $parent_group_id,
+            $isChild
         ));
 
         if ($db->getAffectRow() > 0)
@@ -112,9 +114,27 @@ class AutomatedTestCaseGroupDao
                     $parentGroup['groupID']
                 ));
 
+                if ($childGroup) {
+                    foreach ($childGroup as &$group) {
+                        $child_group_list = $db->prepareExecuteAll('SELECT eo_project_test_case_group.groupID,eo_project_test_case_group.groupName,eo_project_test_case_group.parentGroupID FROM eo_project_test_case_group WHERE eo_project_test_case_group.projectID = ? AND eo_project_test_case_group.isChild = 2 AND eo_project_test_case_group.parentGroupID = ? ORDER BY eo_project_test_case_group.groupName ASC;', array(
+                            $project_id,
+                            $group['groupID']
+                        ));
+
+                        if ($child_group_list) {
+                            $group['childGroupList'] = $child_group_list;
+                        } else {
+                            $group['childGroupList'] = array();
+                        }
+                    }
+                }
+
                 //判断是否有子分组
-                if (!empty($childGroup))
+                if ($childGroup) {
                     $parentGroup['childGroupList'] = $childGroup;
+                } else {
+                    $parentGroup['childGroupList'] = array();
+                }
             }
         }
 
@@ -136,9 +156,10 @@ class AutomatedTestCaseGroupDao
      * @param $group_id
      * @param $group_name
      * @param $parent_group_id
+     * @param $isChild
      * @return bool
      */
-    public function editGroup(&$project_id, &$group_id, &$group_name, &$parent_group_id)
+    public function editGroup(&$project_id, &$group_id, &$group_name, &$parent_group_id, &$isChild)
     {
         $db = getDatabase();
 
@@ -151,9 +172,10 @@ class AutomatedTestCaseGroupDao
             ));
         } else {
             //有父分组
-            $db->prepareExecute('UPDATE eo_project_test_case_group SET eo_project_test_case_group.groupName = ?,eo_project_test_case_group.parentGroupID = ?,eo_project_test_case_group.isChild = 1 WHERE eo_project_test_case_group.groupID = ? AND eo_project_test_case_group.projectID = ?;', array(
+            $db->prepareExecute('UPDATE eo_project_test_case_group SET eo_project_test_case_group.groupName = ?,eo_project_test_case_group.parentGroupID = ?,eo_project_test_case_group.isChild = ? WHERE eo_project_test_case_group.groupID = ? AND eo_project_test_case_group.projectID = ?;', array(
                 $group_name,
                 $parent_group_id,
+                $isChild,
                 $group_id,
                 $project_id
             ));
@@ -243,7 +265,7 @@ class AutomatedTestCaseGroupDao
             $result['caseList'] = array();
         }
         $child_group_list = array();
-        if ($group_info['isChild'] == 0) {
+        if ($group_info['isChild'] <= 0) {
             $child_group_list = $db->prepareExecuteAll('SELECT eo_project_test_case_group.groupID,eo_project_test_case_group.groupName FROM eo_project_test_case_group WHERE eo_project_test_case_group.parentGroupID = ?;', array(
                 $group_id
             ));
@@ -257,11 +279,32 @@ class AutomatedTestCaseGroupDao
                             $child_single_case_list = $db->prepareExecuteAll('SELECT eo_project_test_case_single.connID,eo_project_test_case_single.caseData,eo_project_test_case_single.caseCode,eo_project_test_case_single.statusCode,eo_project_test_case_single.matchType,eo_project_test_case_single.matchRule,eo_project_test_case_single.apiName,eo_project_test_case_single.apiURI,eo_project_test_case_single.apiRequestType,eo_project_test_case_single.orderNumber FROM eo_project_test_case_single WHERE eo_project_test_case_single.caseID = ?;', array(
                                 $child_case['caseID']
                             ));
-                            $child_case['caseSingleList'] = $child_single_case_list;
+                            $child_case['caseSingleList'] = $child_single_case_list ? $child_single_case_list : array();
                         }
                         $child_group_info['caseList'] = $child_case_list;
                     } else {
                         $child_group_info['caseList'] = array();
+                    }
+                    $group_list = $db->prepareExecuteAll('SELECT eo_project_test_case_group.groupID,eo_project_test_case_group.groupName FROM eo_project_test_case_group WHERE eo_project_test_case_group.parentGroupID = ?;', array(
+                        $child_group_info['groupID']
+                    ));
+                    if (is_array($group_list)) {
+                        foreach ($group_list as $group) {
+                            $second_child_case_list = $db->prepareExecuteAll('SELECT eo_project_test_case.caseID,eo_project_test_case.caseName,eo_project_test_case.caseDesc,eo_project_test_case.caseType,eo_project_test_case.caseCode FROM eo_project_test_case WHERE eo_project_test_case.groupID = ?;', array(
+                                $group['groupID']
+                            ));
+                            if (is_array($second_child_case_list)) {
+                                foreach ($second_child_case_list as &$second_child_case) {
+                                    $second_child_single_case_list = $db->prepareExecuteAll('SELECT eo_project_test_case_single.connID,eo_project_test_case_single.caseData,eo_project_test_case_single.caseCode,eo_project_test_case_single.statusCode,eo_project_test_case_single.matchType,eo_project_test_case_single.matchRule,eo_project_test_case_single.apiName,eo_project_test_case_single.apiURI,eo_project_test_case_single.apiRequestType,eo_project_test_case_single.orderNumber FROM eo_project_test_case_single WHERE eo_project_test_case_single.caseID = ?;', array(
+                                        $second_child_case['caseID']
+                                    ));
+                                    $second_child_case['caseSingleList'] = $second_child_single_case_list ? $second_child_single_case_list : array();
+                                }
+                            }
+                        }
+                        $child_group_info['childGroupList'] = $group_list;
+                    } else {
+                        $child_group_info['childGroupList'] = array();
                     }
                 }
             } else {
@@ -311,21 +354,19 @@ class AutomatedTestCaseGroupDao
                     $case_id = $db->getLastInsertID();
                     if ($case['caseSingleList']) {
                         foreach ($case['caseSingleList'] as $single_case) {
-                            if ($single_case['matchType'] == 2) {
-                                $match = array();
-                                // 匹配<response[]>，当没有匹配结果的时候跳过
-                                if (preg_match_all('#<response\[(\d+)\]#', $single_case['caseData'], $match) > 0) {
-                                    // 遍历匹配结果，对原字符串进行多次替换
-                                    foreach ($match[1] as $response_id) {
-                                        for ($i = 0; $i < count($case['caseSingleList']); $i++) {
-                                            if ($case['caseSingleList'][$i]['connID'] == $response_id) {
-                                                $result = $db->prepareExecute("SELECT eo_project_test_case_single.connID FROM eo_project_test_case_single.eo_project_test_case_single WHERE eo_project_test_case_single.apiName = ? AND eo_project_test_case_single.apiURI = ? AND eo_project_test_case_single.caseID = ?;", array(
-                                                    $case['caseSingleList'][$i]['apiName'],
-                                                    $case['caseSingleList'][$i]['apiURI'],
-                                                    $case_id
-                                                ));
-                                                $single_case['caseData'] = str_replace("<response[" . $response_id, "<response[" . $result['connID'], $single_case['caseData']);
-                                            }
+                            $match = array();
+                            // 匹配<response[]>，当没有匹配结果的时候跳过
+                            if (preg_match_all('#<response\[(\d+)\]#', $single_case['caseData'], $match) > 0) {
+                                // 遍历匹配结果，对原字符串进行多次替换
+                                foreach ($match[1] as $response_id) {
+                                    for ($i = 0; $i < count($case['caseSingleList']); $i++) {
+                                        if ($case['caseSingleList'][$i]['connID'] == $response_id) {
+                                            $result = $db->prepareExecute("SELECT eo_project_test_case_single.connID FROM eo_project_test_case_single WHERE eo_project_test_case_single.apiName = ? AND eo_project_test_case_single.apiURI = ? AND eo_project_test_case_single.caseID = ?;", array(
+                                                $case['caseSingleList'][$i]['apiName'],
+                                                $case['caseSingleList'][$i]['apiURI'],
+                                                $case_id
+                                            ));
+                                            $single_case['caseData'] = str_replace("<response[" . $response_id, "<response[" . $result['connID'], $single_case['caseData']);
                                         }
                                     }
                                 }
@@ -383,25 +424,24 @@ class AutomatedTestCaseGroupDao
                             $case_id = $db->getLastInsertID();
                             if ($case['caseSingleList']) {
                                 foreach ($case['caseSingleList'] as $single_case) {
-                                    if ($single_case['matchType'] == 2) {
-                                        $match = array();
-                                        // 匹配<response[]>，当没有匹配结果的时候跳过
-                                        if (preg_match_all('#<response\[(\d+)\]#', $single_case['caseData'], $match) > 0) {
-                                            // 遍历匹配结果，对原字符串进行多次替换
-                                            foreach ($match[1] as $response_id) {
-                                                for ($i = 0; $i < count($case['caseSingleList']); $i++) {
-                                                    if ($case['caseSingleList'][$i]['connID'] == $response_id) {
-                                                        $result = $db->prepareExecute("SELECT eo_project_test_case_single.connID FROM eo_project_test_case_single WHERE eo_project_test_case_single.apiName = ? AND eo_project_test_case_single.apiURI = ? AND eo_project_test_case_single.caseID = ?;", array(
-                                                            $case['caseSingleList'][$i]['apiName'],
-                                                            $case['caseSingleList'][$i]['apiURI'],
-                                                            $case_id
-                                                        ));
-                                                        $single_case['caseData'] = str_replace("<response[" . $response_id, "<response[" . $result['connID'], $single_case['caseData']);
-                                                    }
+                                    $match = array();
+                                    // 匹配<response[]>，当没有匹配结果的时候跳过
+                                    if (preg_match_all('#<response\[(\d+)\]#', $single_case['caseData'], $match) > 0) {
+                                        // 遍历匹配结果，对原字符串进行多次替换
+                                        foreach ($match[1] as $response_id) {
+                                            for ($i = 0; $i < count($case['caseSingleList']); $i++) {
+                                                if ($case['caseSingleList'][$i]['connID'] == $response_id) {
+                                                    $result = $db->prepareExecute("SELECT eo_project_test_case_single.connID FROM eo_project_test_case_single WHERE eo_project_test_case_single.apiName = ? AND eo_project_test_case_single.apiURI = ? AND eo_project_test_case_single.caseID = ?;", array(
+                                                        $case['caseSingleList'][$i]['apiName'],
+                                                        $case['caseSingleList'][$i]['apiURI'],
+                                                        $case_id
+                                                    ));
+                                                    $single_case['caseData'] = str_replace("<response[" . $response_id, "<response[" . $result['connID'], $single_case['caseData']);
                                                 }
                                             }
                                         }
                                     }
+
                                     $db->prepareExecute('INSERT INTO eo_project_test_case_single(eo_project_test_case_single.caseID,eo_project_test_case_single.caseData,eo_project_test_case_single.caseCode,eo_project_test_case_single.statusCode,eo_project_test_case_single.matchType,eo_project_test_case_single.matchRule, eo_project_test_case_single.apiName, eo_project_test_case_single.apiURI, eo_project_test_case_single.apiRequestType,eo_project_test_case_single.orderNumber) VALUES (?,?,?,?,?,?,?,?,?,?);', array(
                                         $case_id,
                                         $single_case['caseData'],
@@ -416,6 +456,79 @@ class AutomatedTestCaseGroupDao
                                     ));
                                     if ($db->getAffectRow() < 1)
                                         throw new \PDOException('insert child single test case error');
+                                }
+                            }
+                        }
+                    }
+                    if ($child_group['childGroupList']) {
+                        $parent_id = $group_id;
+                        foreach ($child_group['childGroupList'] as $group) {
+                            // 插入分组
+                            $db->prepareExecute('INSERT INTO eo_project_test_case_group (eo_project_test_case_group.projectID,eo_project_test_case_group.groupName,eo_project_test_case_group.parentGroupID,eo_project_test_case_group.isChild) VALUES (?,?,?,?);', array(
+                                $project_id,
+                                $group['groupName'],
+                                $parent_id,
+                                2
+                            ));
+                            if ($db->getAffectRow() < 1) {
+                                throw new \PDOException("inset child group error");
+                            }
+
+                            $group_id = $db->getLastInsertID();
+                            if ($group['caseList']) {
+                                // 插入状态码
+                                foreach ($group['caseList'] as $case) {
+                                    $db->prepareExecute('INSERT INTO eo_project_test_case(eo_project_test_case.projectID,eo_project_test_case.userID,eo_project_test_case.caseName,eo_project_test_case.caseDesc,eo_project_test_case.createTime,eo_project_test_case.updateTime,eo_project_test_case.caseType,eo_project_test_case.groupID,eo_project_test_case.caseCode)VALUES(?,?,?,?,?,?,?,?,?);', array(
+                                        $project_id,
+                                        $user_id,
+                                        $case['caseName'],
+                                        $case['caseDesc'],
+                                        date('Y-m-d H:i:s', time()),
+                                        date('Y-m-d H:i:s', time()),
+                                        $case['caseType'],
+                                        $group_id,
+                                        $case['caseCode']
+                                    ));
+
+                                    if ($db->getAffectRow() < 1)
+                                        throw new \PDOException("insert child test case error");
+                                    $case_id = $db->getLastInsertID();
+                                    if ($case['caseSingleList']) {
+                                        foreach ($case['caseSingleList'] as $single_case) {
+                                            $match = array();
+                                            // 匹配<response[]>，当没有匹配结果的时候跳过
+                                            if (preg_match_all('#<response\[(\d+)\]#', $single_case['caseData'], $match) > 0) {
+                                                // 遍历匹配结果，对原字符串进行多次替换
+                                                foreach ($match[1] as $response_id) {
+                                                    for ($i = 0; $i < count($case['caseSingleList']); $i++) {
+                                                        if ($case['caseSingleList'][$i]['connID'] == $response_id) {
+                                                            $result = $db->prepareExecute("SELECT eo_project_test_case_single.connID FROM eo_project_test_case_single WHERE eo_project_test_case_single.apiName = ? AND eo_project_test_case_single.apiURI = ? AND eo_project_test_case_single.caseID = ?;", array(
+                                                                $case['caseSingleList'][$i]['apiName'],
+                                                                $case['caseSingleList'][$i]['apiURI'],
+                                                                $case_id
+                                                            ));
+                                                            $single_case['caseData'] = str_replace("<response[" . $response_id, "<response[" . $result['connID'], $single_case['caseData']);
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            $db->prepareExecute('INSERT INTO eo_project_test_case_single(eo_project_test_case_single.caseID,eo_project_test_case_single.caseData,eo_project_test_case_single.caseCode,eo_project_test_case_single.statusCode,eo_project_test_case_single.matchType,eo_project_test_case_single.matchRule, eo_project_test_case_single.apiName, eo_project_test_case_single.apiURI, eo_project_test_case_single.apiRequestType,eo_project_test_case_single.orderNumber) VALUES (?,?,?,?,?,?,?,?,?,?);', array(
+                                                $case_id,
+                                                $single_case['caseData'],
+                                                $single_case['caseCode'],
+                                                $single_case['statusCode'],
+                                                $single_case['matchType'],
+                                                $single_case['matchRule'],
+                                                $single_case['apiName'],
+                                                $single_case['apiURI'],
+                                                $single_case['apiRequestType'],
+                                                $single_case['orderNumber']
+                                            ));
+                                            if ($db->getAffectRow() < 1)
+                                                throw new \PDOException('insert child single test case error');
+                                        }
+                                    }
                                 }
                             }
                         }

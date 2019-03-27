@@ -108,7 +108,7 @@ class DatabaseDao
      * @param $userID int 用户ID
      * @return array|bool
      */
-    public function getDatabase(&$userID)
+    public function getDatabaseList(&$userID)
     {
         $db = getDatabase();
 
@@ -120,6 +120,36 @@ class DatabaseDao
             return FALSE;
         else
             return $result;
+    }
+
+    /**
+     * 获取数据库详情
+     * @param $dbID
+     * @param $userID
+     * @return array|bool
+     */
+    public function getDatabase(&$dbID, &$userID)
+    {
+        $db = getDatabase();
+        $result = $db->prepareExecute('SELECT eo_database.dbID,eo_database.dbName,eo_database.dbVersion,eo_database.dbUpdateTime,eo_conn_database.userType,eo_database.databaseType FROM eo_database LEFT JOIN eo_conn_database ON eo_database.dbID = eo_conn_database.dbID WHERE eo_conn_database.userID = ? AND eo_database.dbID =?;', array(
+            $userID,
+            $dbID
+        ));
+
+        if (empty($result)) {
+            return FALSE;
+        } else {
+            $res = array('databaseInfo' => $result);
+            $table_count = $db->prepareExecute('SELECT COUNT(0) AS count FROM eo_database_table WHERE eo_database_table.dbID = ?;', array(
+                $dbID
+            ));
+            $res['tableCount'] = $table_count['count'] ? $table_count['count'] : 0;
+            $field_count = $db->prepareExecute('SELECT COUNT(0) AS count FROM eo_database_table_field WHERE eo_database_table_field.tableID IN (SELECT eo_database_table.tableID FROM eo_database_table WHERE eo_database_table.dbID = ?);', array(
+                $dbID
+            ));
+            $res['fieldCount'] = $field_count['count'] ? $field_count['count'] : 0;
+            return $res;
+        }
     }
 
     /**
@@ -150,15 +180,37 @@ class DatabaseDao
     /**
      * Import database table which export from mysql
      * 导入数据表
-     * @param $dbID int 数据库ID
+     * @param $dbName
      * @param $tableList array 数据库表
+     * @param $databaseType
+     * @param $userID
      * @return bool
      */
-    public function importDatabase(&$dbID, &$tableList)
+    public function importDatabase(&$dbName, &$tableList, &$databaseType, &$userID)
     {
         $db = getDatabase();
         try {
             $db->beginTransaction();
+
+            $db -> prepareExecute('INSERT INTO eo_database (dbName, dbVersion, dbUpdateTime, databaseType) VALUES (?,?,?,?);', array(
+                $dbName,
+                '1.0',
+                date('Y-m-d H:i:s', time()),
+                $databaseType
+            ));
+            if($db->getAffectRow() <1){
+                throw new \PDOException('insert database error.');
+            }
+            $dbID = $db -> getLastInsertID();
+
+            // 生成数据库与用户的联系
+            $db->prepareExecute('INSERT INTO eo_conn_database (eo_conn_database.dbID,eo_conn_database.userID) VALUES (?,?);', array(
+                $dbID,
+                $userID
+            ));
+            if($db->getAffectRow()<1) {
+                throw new \PDOException('insert database conn error.');
+            }
 
             foreach ($tableList as $table) {
                 $db->prepareExecute('INSERT INTO eo_database_table (eo_database_table.dbID,eo_database_table.tableName,eo_database_table.tableDescription) VALUES (?,?,?);', array(

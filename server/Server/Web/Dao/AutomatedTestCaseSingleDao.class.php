@@ -35,6 +35,12 @@ class AutomatedTestCaseSingleDao
     public function addSingleTestCase(&$case_id, &$case_data, &$case_code, &$status_code, &$match_type, &$match_rule, &$api_name, &$api_uri, &$api_request_type, &$order_number)
     {
         $db = getDatabase();
+        if ($order_number) {
+            $db->prepareExecuteAll('UPDATE eo_project_test_case_single SET orderNumber = orderNumber + 1 WHERE eo_project_test_case_single.caseID = ? AND eo_project_test_case_single.orderNumber >= ?;', array(
+                $case_id,
+                $order_number
+            ));
+        }
         if ($order_number === 0) {
             $max_order_number = $db->prepareExecute('SELECT MAX(eo_project_test_case_single.orderNumber) AS number FROM eo_project_test_case_single WHERE eo_project_test_case_single.caseID = ?;', array(
                 $case_id
@@ -103,7 +109,7 @@ class AutomatedTestCaseSingleDao
     {
         $db = getDatabase();
         $db->beginTransaction();
-        $result = $db->prepareExecuteAll('SELECT * FROM eo_project_test_case_single WHERE eo_project_test_case_single.caseID = ? ORDER BY eo_project_test_case_single.connID ASC;', array($case_id));
+        $result = $db->prepareExecuteAll('SELECT * FROM eo_project_test_case_single WHERE eo_project_test_case_single.caseID = ? ORDER BY eo_project_test_case_single.orderNumber ASC;', array($case_id));
         $i = 0;
         $index = 1;
         if (is_array($result)) {

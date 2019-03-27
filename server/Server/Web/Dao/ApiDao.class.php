@@ -202,7 +202,7 @@ class ApiDao
                 throw new \PDOException("addApi error");
             }
         } catch (\PDOException $e) {
-            var_dump($e -> getMessage());
+            var_dump($e->getMessage());
             $db->rollBack();
             return FALSE;
         }
@@ -533,7 +533,8 @@ class ApiDao
     public function getApiListOrderByName(&$groupID, &$asc = 'ASC')
     {
         $db = getDatabase();
-        $result = $db->prepareExecuteAll("SELECT eo_api.apiID,eo_api.apiName,eo_api.apiURI,eo_api.apiStatus,eo_api.apiRequestType,eo_api.apiUpdateTime,eo_api.starred,eo_api_group.groupID,eo_api_group.parentGroupID,eo_api_group.groupName,eo_api.updateUserID,eo_conn_project.partnerNickName,eo_user.userNickName,eo_user.userName FROM eo_api LEFT JOIN eo_api_group ON eo_api.groupID = eo_api_group.groupID LEFT JOIN eo_conn_project ON eo_api.updateUserID = eo_conn_project.userID AND eo_api.projectID = eo_conn_project.projectID LEFT JOIN eo_user ON eo_api.updateUserID = eo_user.userID WHERE (eo_api_group.groupID = ? OR eo_api_group.parentGroupID = ?) AND eo_api.removed = 0 ORDER BY eo_api.apiName $asc;", array(
+        $result = $db->prepareExecuteAll("SELECT eo_api.apiID,eo_api.apiName,eo_api.apiURI,eo_api.apiStatus,eo_api.apiRequestType,eo_api.apiUpdateTime,eo_api.starred,eo_api_group.groupID,eo_api_group.parentGroupID,eo_api_group.groupName,eo_api.updateUserID,eo_conn_project.partnerNickName,eo_user.userNickName,eo_user.userName FROM eo_api LEFT JOIN eo_api_group ON eo_api.groupID = eo_api_group.groupID LEFT JOIN eo_conn_project ON eo_api.updateUserID = eo_conn_project.userID AND eo_api.projectID = eo_conn_project.projectID LEFT JOIN eo_user ON eo_api.updateUserID = eo_user.userID WHERE (eo_api_group.groupID = ? OR eo_api_group.parentGroupID = ? OR eo_api.groupID IN (SELECT eo_api_group.groupID FROM eo_api_group WHERE eo_api_group.parentGroupID IN (SELECT eo_api_group.groupID FROM eo_api_group WHERE eo_api_group.parentGroupID = ?))) AND eo_api.removed = 0 ORDER BY eo_api.apiName $asc;", array(
+            $groupID,
             $groupID,
             $groupID
         ));
@@ -557,7 +558,8 @@ class ApiDao
     public function getApiListOrderByTime(&$groupID, &$asc = 'ASC')
     {
         $db = getDatabase();
-        $result = $db->prepareExecuteAll("SELECT eo_api.apiID,eo_api.apiName,eo_api.apiURI,eo_api.apiStatus,eo_api.apiRequestType,eo_api.apiUpdateTime,eo_api.starred,eo_api_group.groupID,eo_api_group.parentGroupID,eo_api_group.groupName,eo_api.updateUserID,eo_conn_project.partnerNickName,eo_user.userNickName,eo_user.userName FROM eo_api LEFT JOIN eo_api_group ON eo_api.groupID = eo_api_group.groupID LEFT JOIN eo_conn_project ON eo_api.updateUserID = eo_conn_project.userID AND eo_api.projectID = eo_conn_project.projectID LEFT JOIN eo_user ON eo_api.updateUserID = eo_user.userID WHERE (eo_api_group.groupID = ? OR eo_api_group.parentGroupID = ?) AND eo_api.removed = 0 ORDER BY eo_api.apiUpdateTime $asc;", array(
+        $result = $db->prepareExecuteAll("SELECT eo_api.apiID,eo_api.apiName,eo_api.apiURI,eo_api.apiStatus,eo_api.apiRequestType,eo_api.apiUpdateTime,eo_api.starred,eo_api_group.groupID,eo_api_group.parentGroupID,eo_api_group.groupName,eo_api.updateUserID,eo_conn_project.partnerNickName,eo_user.userNickName,eo_user.userName FROM eo_api LEFT JOIN eo_api_group ON eo_api.groupID = eo_api_group.groupID LEFT JOIN eo_conn_project ON eo_api.updateUserID = eo_conn_project.userID AND eo_api.projectID = eo_conn_project.projectID LEFT JOIN eo_user ON eo_api.updateUserID = eo_user.userID WHERE (eo_api_group.groupID = ? OR eo_api_group.parentGroupID = ? OR eo_api.groupID IN (SELECT eo_api_group.groupID FROM eo_api_group WHERE eo_api_group.parentGroupID IN (SELECT eo_api_group.groupID FROM eo_api_group WHERE eo_api_group.parentGroupID = ?))) AND eo_api.removed = 0 ORDER BY eo_api.apiUpdateTime $asc;", array(
+            $groupID,
             $groupID,
             $groupID
         ));
@@ -581,7 +583,8 @@ class ApiDao
     public function getApiListOrderByStarred(&$groupID, &$asc = 'ASC')
     {
         $db = getDatabase();
-        $result = $db->prepareExecuteAll("SELECT DISTINCT eo_api.apiID,eo_api.apiName,eo_api.apiURI,eo_api.apiStatus,eo_api.apiRequestType,eo_api.apiUpdateTime,eo_api.starred,eo_api_group.groupID,eo_api_group.parentGroupID,eo_api_group.groupName,eo_api.updateUserID,eo_conn_project.partnerNickName,eo_user.userNickName,eo_user.userName FROM eo_api LEFT JOIN eo_api_group ON eo_api.groupID = eo_api_group.groupID LEFT JOIN eo_conn_project ON eo_api.updateUserID = eo_conn_project.userID AND eo_api.projectID = eo_conn_project.projectID LEFT JOIN eo_user ON eo_api.updateUserID = eo_user.userID WHERE (eo_api_group.groupID = ? OR eo_api_group.parentGroupID = ?) AND eo_api.removed = 0 ORDER BY eo_api.starred $asc;", array(
+        $result = $db->prepareExecuteAll("SELECT DISTINCT eo_api.apiID,eo_api.apiName,eo_api.apiURI,eo_api.apiStatus,eo_api.apiRequestType,eo_api.apiUpdateTime,eo_api.starred,eo_api_group.groupID,eo_api_group.parentGroupID,eo_api_group.groupName,eo_api.updateUserID,eo_conn_project.partnerNickName,eo_user.userNickName,eo_user.userName FROM eo_api LEFT JOIN eo_api_group ON eo_api.groupID = eo_api_group.groupID LEFT JOIN eo_conn_project ON eo_api.updateUserID = eo_conn_project.userID AND eo_api.projectID = eo_conn_project.projectID LEFT JOIN eo_user ON eo_api.updateUserID = eo_user.userID WHERE (eo_api_group.groupID = ? OR eo_api_group.parentGroupID = ? OR eo_api.groupID IN (SELECT eo_api_group.groupID FROM eo_api_group WHERE eo_api_group.parentGroupID IN (SELECT eo_api_group.groupID FROM eo_api_group WHERE eo_api_group.parentGroupID = ?))) AND eo_api.removed = 0 ORDER BY eo_api.starred $asc;", array(
+            $groupID,
             $groupID,
             $groupID
         ));
@@ -605,7 +608,8 @@ class ApiDao
     public function getApiListOrderByUri(&$groupID, &$asc = 'ASC')
     {
         $db = getDatabase();
-        $result = $db->prepareExecuteAll("SELECT DISTINCT eo_api.apiID,eo_api.apiName,eo_api.apiURI,eo_api.apiStatus,eo_api.apiRequestType,eo_api.apiUpdateTime,eo_api.starred,eo_api_group.groupID,eo_api_group.parentGroupID,eo_api_group.groupName,eo_api.updateUserID,eo_conn_project.partnerNickName,eo_user.userNickName,eo_user.userName FROM eo_api LEFT JOIN eo_api_group ON eo_api.groupID = eo_api_group.groupID LEFT JOIN eo_conn_project ON eo_api.updateUserID = eo_conn_project.userID AND eo_api.projectID = eo_conn_project.projectID LEFT JOIN eo_user ON eo_api.updateUserID = eo_user.userID WHERE (eo_api_group.groupID = ? OR eo_api_group.parentGroupID = ?) AND eo_api.removed = 0 ORDER BY eo_api.apiURI $asc;", array(
+        $result = $db->prepareExecuteAll("SELECT DISTINCT eo_api.apiID,eo_api.apiName,eo_api.apiURI,eo_api.apiStatus,eo_api.apiRequestType,eo_api.apiUpdateTime,eo_api.starred,eo_api_group.groupID,eo_api_group.parentGroupID,eo_api_group.groupName,eo_api.updateUserID,eo_conn_project.partnerNickName,eo_user.userNickName,eo_user.userName FROM eo_api LEFT JOIN eo_api_group ON eo_api.groupID = eo_api_group.groupID LEFT JOIN eo_conn_project ON eo_api.updateUserID = eo_conn_project.userID AND eo_api.projectID = eo_conn_project.projectID LEFT JOIN eo_user ON eo_api.updateUserID = eo_user.userID WHERE (eo_api_group.groupID = ? OR eo_api_group.parentGroupID = ? OR eo_api.groupID IN (SELECT eo_api_group.groupID FROM eo_api_group WHERE eo_api_group.parentGroupID IN (SELECT eo_api_group.groupID FROM eo_api_group WHERE eo_api_group.parentGroupID = ?))) AND eo_api.removed = 0 ORDER BY eo_api.apiURI $asc;", array(
+            $groupID,
             $groupID,
             $groupID
         ));
@@ -629,7 +633,8 @@ class ApiDao
     public function getApiListOrderByCreateTime(&$groupID, &$asc = 'ASC')
     {
         $db = getDatabase();
-        $result = $db->prepareExecuteAll("SELECT DISTINCT eo_api.apiID,eo_api.apiName,eo_api.apiURI,eo_api.apiStatus,eo_api.apiRequestType,eo_api.apiUpdateTime,eo_api.starred,eo_api_group.groupID,eo_api_group.parentGroupID,eo_api_group.groupName,eo_api.updateUserID,eo_conn_project.partnerNickName,eo_user.userNickName,eo_user.userName FROM eo_api LEFT JOIN eo_api_group ON eo_api.groupID = eo_api_group.groupID LEFT JOIN eo_conn_project ON eo_api.updateUserID = eo_conn_project.userID AND eo_api.projectID = eo_conn_project.projectID LEFT JOIN eo_user ON eo_api.updateUserID = eo_user.userID WHERE (eo_api_group.groupID = ? OR eo_api_group.parentGroupID = ?) AND eo_api.removed = 0 ORDER BY eo_api.apiID $asc;", array(
+        $result = $db->prepareExecuteAll("SELECT DISTINCT eo_api.apiID,eo_api.apiName,eo_api.apiURI,eo_api.apiStatus,eo_api.apiRequestType,eo_api.apiUpdateTime,eo_api.starred,eo_api_group.groupID,eo_api_group.parentGroupID,eo_api_group.groupName,eo_api.updateUserID,eo_conn_project.partnerNickName,eo_user.userNickName,eo_user.userName FROM eo_api LEFT JOIN eo_api_group ON eo_api.groupID = eo_api_group.groupID LEFT JOIN eo_conn_project ON eo_api.updateUserID = eo_conn_project.userID AND eo_api.projectID = eo_conn_project.projectID LEFT JOIN eo_user ON eo_api.updateUserID = eo_user.userID WHERE (eo_api_group.groupID = ? OR eo_api_group.parentGroupID = ? OR eo_api.groupID IN (SELECT eo_api_group.groupID FROM eo_api_group WHERE eo_api_group.parentGroupID IN (SELECT eo_api_group.groupID FROM eo_api_group WHERE eo_api_group.parentGroupID = ?))) AND eo_api.removed = 0 ORDER BY eo_api.apiID $asc;", array(
+            $groupID,
             $groupID,
             $groupID
         ));
@@ -664,6 +669,10 @@ class ApiDao
         $apiJson['baseInfo']['parentGroupID'] = $apiInfo['parentGroupID'];
         $apiJson['baseInfo']['projectID'] = $apiInfo['projectID'];
         $apiJson['baseInfo']['apiID'] = $apiInfo['apiID'];
+        $topParentGroupID = $db->prepareExecute('SELECT eo_api_group.parentGroupID FROM eo_api_group WHERE eo_api_group.groupID = ? AND eo_api_group.isChild = 1;', array(
+            $apiInfo['parentGroupID']
+        ));
+        $apiJson['baseInfo']['topParentGroupID'] = $topParentGroupID['parentGroupID'] ? $topParentGroupID['parentGroupID'] : $apiInfo['parentGroupID'];
         $apiJson['mockInfo']['mockURL'] = (is_https() ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . $_SERVER['SCRIPT_NAME'] . '?g=Web&c=Mock&o=mock' . $apiJson['baseInfo']['mockCode'];
 
         $test_history = $db->prepareExecuteAll('SELECT eo_api_test_history.testID,eo_api_test_history.requestInfo,eo_api_test_history.resultInfo,eo_api_test_history.testTime FROM eo_api_test_history WHERE eo_api_test_history.apiID = ? ORDER BY eo_api_test_history.testTime DESC LIMIT 10;', array(

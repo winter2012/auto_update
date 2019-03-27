@@ -199,6 +199,7 @@ CREATE TABLE `eo_database` (
   `dbName` varchar(255) NOT NULL,
   `dbVersion` float unsigned NOT NULL,
   `dbUpdateTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `databaseType` tinyint(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`dbID`)
 ) DEFAULT CHARSET=utf8;
 DROP TABLE IF EXISTS `eo_database_table`;
@@ -353,7 +354,8 @@ CREATE TABLE `eo_project_test_case_group_order` (
   `orderID` int(11) NOT NULL AUTO_INCREMENT,
   `projectID` int(11) NOT NULL,
   `orderList` text NOT NULL,
-  PRIMARY KEY (`orderID`,`projectID`)
+  PRIMARY KEY (`orderID`,`projectID`),
+  UNIQUE KEY `projectID` (`projectID`)
 ) DEFAULT CHARSET=utf8;
 DROP TABLE IF EXISTS `eo_project_test_case_history`;
 CREATE TABLE `eo_project_test_case_history` (

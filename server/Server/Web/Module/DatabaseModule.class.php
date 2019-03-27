@@ -73,10 +73,21 @@ class DatabaseModule
      * 获取数据库列表
      * @return bool|array
      */
-    public function getDatabase()
+    public function getDatabaseList()
     {
         $databaseDao = new DatabaseDao;
-        return $databaseDao->getDatabase($_SESSION['userID']);
+        return $databaseDao->getDatabaseList($_SESSION['userID']);
+    }
+
+    /**
+     * 获取数据库详情
+     * @param $dbID
+     * @return array|bool
+     */
+    public function getDatabase(&$dbID)
+    {
+        $dbDao = new DatabaseDao();
+        return $dbDao->getDatabase($dbID, $_SESSION['userID']);
     }
 
     /**
@@ -99,97 +110,94 @@ class DatabaseModule
     /**
      * Import database table which export from mysql
      * 导入数据表
-     * @param $dbID int 数据库ID
+     * @param $dbName
      * @param $tables array 数据库表
      * @return bool
      */
-    public function importDatabase(&$dbID, &$tables)
+    public function importDatabase(&$dbName, &$tables)
     {
         $userID = $_SESSION['userID'];
         $databaseDao = new DatabaseDao;
-        $databaseTableDao = new DatabaseTableDao;
-        if ($dbID = $databaseDao->checkDatabasePermission($dbID, $_SESSION['userID'])) {
-            $tableList = array();
-            foreach ($tables as $table) {
-                $fieldList = array();
-                //将各字段信息分割成一行一个
-                preg_match_all('/.+?[\r\n]+/s', $table['tableField'], $fields);
+        $tableList = array();
+        foreach ($tables as $table) {
+            $fieldList = array();
+            //将各字段信息分割成一行一个
+            preg_match_all('/.+?[\r\n]+/s', $table['tableField'], $fields);
 
-                $primaryKeys = '';
-                foreach ($fields[0] as $field) {
-                    $field = trim($field);
-                    //以'`'开头的是字段
-                    if (strpos($field, '`') === 0) {
-                        $fieldName = substr($field, 1, strpos(substr($field, 1), '`'));
-                        //将字段类型和长度的混合提取出来
-                        preg_match('/`\\s(.+?)\\s/', $field, $type);
-                        preg_match("/COMMENT.*'(.*?)'/", $field, $fieldDesc);
-                        if (empty($fieldDesc)) {
-                            preg_match("/comment.*'(.*?)'/", $field, $fieldDesc);
-                        }
-                        if (!$type[1]) {
-                            $type[1] = substr($field, strlen($fieldName) + 3, strpos(substr($field, strlen($fieldName) + 3), ','));
-                        }
-                        if (!$type[1]) {
-                            $type[1] = substr($field, strlen($fieldName) + 3);
-                        }
-                        if (strpos($type[1], '(')) {
-                            $fieldType = substr($type[1], 0, strpos($type[1], '('));
-                            if (preg_match('/\([0-9]{1,10}/', $type[1], $match)) {
-                                //长度用左括号右边第一个10位内数字表示
-                                $fieldLength = substr($match[0], 1);
-                            } else {
-                                $fieldLength = '0';
-                            }
+            $primaryKeys = '';
+            foreach ($fields[0] as $field) {
+                $field = trim($field);
+                //以'`'开头的是字段
+                if (strpos($field, '`') === 0) {
+                    $fieldName = substr($field, 1, strpos(substr($field, 1), '`'));
+                    //将字段类型和长度的混合提取出来
+                    preg_match('/`\\s(.+?)\\s/', $field, $type);
+                    preg_match("/COMMENT.*'(.*?)'/", $field, $fieldDesc);
+                    if (empty($fieldDesc)) {
+                        preg_match("/comment.*'(.*?)'/", $field, $fieldDesc);
+                    }
+                    if (!$type[1]) {
+                        $type[1] = substr($field, strlen($fieldName) + 3, strpos(substr($field, strlen($fieldName) + 3), ','));
+                    }
+                    if (!$type[1]) {
+                        $type[1] = substr($field, strlen($fieldName) + 3);
+                    }
+                    if (strpos($type[1], '(')) {
+                        $fieldType = substr($type[1], 0, strpos($type[1], '('));
+                        if (preg_match('/\([0-9]{1,10}/', $type[1], $match)) {
+                            //长度用左括号右边第一个10位内数字表示
+                            $fieldLength = substr($match[0], 1);
                         } else {
-                            $fieldType = $type[1];
-                            //未注明长度，默认为0
                             $fieldLength = '0';
                         }
-
-                        if (strpos($field, 'NOT NULL') !== FALSE) {
-                            $isNotNull = 1;
-                        } else
-                            $isNotNull = 0;
-
-                        $fieldList[] = array(
-                            'fieldName' => $fieldName,
-                            'fieldDesc' => $fieldDesc[1],
-                            'fieldType' => $fieldType,
-                            'fieldLength' => $fieldLength,
-                            'isNotNull' => $isNotNull
-                        );
-                    }
-
-                    //以PRIMARY KEY开头的是整个表中主键的集合
-                    if (strpos($field, 'PRIMARY') !== FALSE) {
-                        $table['primaryKey'] = $table['primaryKey'] . substr($field, strpos($field, '('));
-                    }
-
-                }
-
-                //判断各字段是否为主键
-                foreach ($fieldList as &$tableField) {
-                    if (strpos($table['primaryKey'], $tableField['fieldName']) !== FALSE) {
-                        $tableField['isPrimaryKey'] = 1;
                     } else {
-                        $tableField['isPrimaryKey'] = 0;
+                        $fieldType = $type[1];
+                        //未注明长度，默认为0
+                        $fieldLength = '0';
                     }
+
+                    if (strpos($field, 'NOT NULL') !== FALSE) {
+                        $isNotNull = 1;
+                    } else
+                        $isNotNull = 0;
+
+                    $fieldList[] = array(
+                        'fieldName' => $fieldName,
+                        'fieldDesc' => $fieldDesc[1],
+                        'fieldType' => $fieldType,
+                        'fieldLength' => $fieldLength,
+                        'isNotNull' => $isNotNull
+                    );
                 }
-                $tableList[] = array(
-                    'tableName' => $table['tableName'],
-                    'tableDesc' => $table['tableDesc'],
-                    'fieldList' => $fieldList
-                );
-                unset($fieldList);
+
+                //以PRIMARY KEY开头的是整个表中主键的集合
+                if (strpos($field, 'PRIMARY') !== FALSE) {
+                    $table['primaryKey'] = $table['primaryKey'] . substr($field, strpos($field, '('));
+                }
             }
 
-            if (isset($tableList[0]))
-                return $databaseDao->importDatabase($dbID, $tableList);
-            else
-                return FALSE;
-        } else
+            //判断各字段是否为主键
+            foreach ($fieldList as &$tableField) {
+                if (strpos($table['primaryKey'], $tableField['fieldName']) !== FALSE) {
+                    $tableField['isPrimaryKey'] = 1;
+                } else {
+                    $tableField['isPrimaryKey'] = 0;
+                }
+            }
+            $tableList[] = array(
+                'tableName' => $table['tableName'],
+                'tableDesc' => $table['tableDesc'],
+                'fieldList' => $fieldList
+            );
+            unset($fieldList);
+        }
+
+        if (isset($tableList[0])) {
+            $databaseType = 0;
+            return $databaseDao->importDatabase($dbName, $tableList, $databaseType, $userID);
+        } else {
             return FALSE;
+        }
     }
 
     /**
@@ -198,7 +206,7 @@ class DatabaseModule
      * @param $data string 数据库相关数据
      * @return bool
      */
-    public function importDatabseByJson(&$data)
+    public function importDatabaseByJson(&$data)
     {
         $user_id = $_SESSION['userID'];
 
@@ -218,11 +226,10 @@ class DatabaseModule
      */
     public function exportDatabase(&$dbID)
     {
-        $userID = $_SESSION['userID'];
         $dao = new DatabaseDao;
         if ($dao->checkDatabasePermission($dbID, $_SESSION['userID'])) {
             $dumpJson = json_encode($dao->getDatabaseInfo($dbID));
-            $fileName = 'eolinker_export_' . $_SESSION['userName'] . '_' . time() . '.export';
+            $fileName = 'eoLinker_export_' . $_SESSION['userName'] . '_' . time() . '.export';
             if (file_put_contents(realpath('./dump') . DIRECTORY_SEPARATOR . $fileName, $dumpJson)) {
                 return $fileName;
             } else {
@@ -232,7 +239,87 @@ class DatabaseModule
             return FALSE;
     }
 
+    public function importOracleDatabase(&$database_name, &$tables)
+    {
+        $user_id = $_SESSION['userID'];
 
+        $database_dao = new DatabaseDao();
+
+        $table_list = array();
+        foreach ($tables as $table) {
+            $field_list = array();
+            $fields = array();
+            // 将各字段信息分割成一行一个
+            preg_match_all('/.+?[\r\n]+/s', $table ['tableField'], $fields);
+
+            foreach ($fields [0] as $field) {
+                $field = trim($field);
+                // 以'`'开头的是字段
+                if (strpos($field, '"') === 0) {
+                    $field_name = substr($field, 1, strpos(substr($field, 1), '"'));
+                    // 将字段类型和长度的混合提取出来
+                    $type = array();
+                    preg_match('/`\\s(.+?)\\s/', $field, $type);
+                    if (!$type [1]) {
+                        $type [1] = substr($field, strlen($field_name) + 3, strpos(substr($field, strlen($field_name) + 3), ','));
+                    }
+                    if (!$type [1]) {
+                        $type [1] = substr($field, strlen($field_name) + 3);
+                    }
+                    if (strpos($type [1], '(')) {
+                        $field_type = substr($type [1], 0, strpos($type [1], '('));
+                        $match = array();
+                        if (preg_match('/\([0-9]{1,10}/', $type [1], $match)) {
+                            // 长度用左括号右边第一个10位内数字表示
+                            $field_length = substr($match [0], 1);
+                        } else {
+                            $field_length = '0';
+                        }
+                    } else {
+                        $field_type = $type [1];
+                        // 未注明长度，默认为0
+                        $field_length = '0';
+                    }
+
+                    if (strpos($field, 'NOT NULL') !== FALSE) {
+                        $is_not_null = 1;
+                    } else
+                        $is_not_null = 0;
+
+                    if (strpos($table ['primaryKeySql'], $field_name) !== FALSE) {
+                        $is_primary_key = 1;
+                    } else {
+                        $is_primary_key = 0;
+                    }
+                    $field_desc = array();
+                    if (strpos($table ['commentSql'], $field_name) !== FALSE) {
+                        preg_match('/COMMENT ON COLUMN.*?' . $field_name . '.*?\'(.*?)\'.*?;/', $table ['commentSql'], $field_desc);
+                    }
+
+                    $field_list [] = array(
+                        'fieldName' => $field_name,
+                        'fieldType' => $field_type,
+                        'fieldLength' => $field_length,
+                        'isNotNull' => $is_not_null,
+                        'isPrimaryKey' => $is_primary_key,
+                        'fieldDesc' => $field_desc [1]
+                    );
+                }
+            }
+            $table_list [] = array(
+                'tableName' => $table ['tableName'],
+                'tableDesc' => $table ['tableDesc'],
+                'fieldList' => $field_list
+            );
+            unset($field_list);
+        }
+
+        if (isset($table_list [0])) {
+            $database_type = 1;
+            return $database_dao->importDatabase($database_name, $table_list, $database_type, $user_id);
+        } else
+            return FALSE;
+    }
 }
 
 ?>

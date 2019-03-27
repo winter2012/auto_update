@@ -1,20 +1,19 @@
 <?php
 /**
- * @name eolinker ams open source，eolinker开源版本
- * @link https://www.eolinker.com/
+ * @name eolinker open source，eolinker开源版本
+ * @link https://www.eolinker.com
  * @package eolinker
- * @author www.eolinker.com 广州银云信息科技有限公司 2015-2017
- * eoLinker是目前全球领先、国内最大的在线API接口管理平台，提供自动生成API文档、API自动化测试、Mock测试、团队协作等功能，旨在解决由于前后端分离导致的开发效率低下问题。
- * 如在使用的过程中有任何问题，欢迎加入用户讨论群进行反馈，我们将会以最快的速度，最好的服务态度为您解决问题。
+ * @author www.eolinker.com 广州银云信息科技有限公司 2015-2018
+
+ * eolinker，业内领先的Api接口管理及测试平台，为您提供最专业便捷的在线接口管理、测试、维护以及各类性能测试方案，帮助您高效开发、安全协作。
+ * 如在使用的过程中有任何问题，可通过http://help.eolinker.com寻求帮助
  *
- * eoLinker AMS开源版的开源协议遵循Apache License 2.0，如需获取最新的eolinker开源版以及相关资讯，请访问:https://www.eolinker.com/#/os/download
+ * 注意！eolinker开源版本遵循GPL V3开源协议，仅供用户下载试用，禁止“一切公开使用于商业用途”或者“以eoLinker开源版本为基础而开发的二次版本”在互联网上流通。
+ * 注意！一经发现，我们将立刻启用法律程序进行维权。
+ * 再次感谢您的使用，希望我们能够共同维护国内的互联网开源文明和正常商业秩序。
  *
- * 官方网站：https://www.eolinker.com/
- * 官方博客以及社区：http://blog.eolinker.com/
- * 使用教程以及帮助：http://help.eolinker.com/
- * 商务合作邮箱：market@eolinker.com
- * 用户讨论QQ群：284421832
  */
+
 
 namespace RTP\Module;
 

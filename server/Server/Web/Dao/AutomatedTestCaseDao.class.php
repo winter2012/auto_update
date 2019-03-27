@@ -85,13 +85,20 @@ class AutomatedTestCaseDao
     public function getTestCaseList(&$group_id)
     {
         $db = getDatabase();
-        $result = $db->prepareExecuteAll("SELECT eo_conn_project.partnerNickName,eo_user.userNickName,eo_project_test_case.caseID,eo_project_test_case.caseName,eo_project_test_case.caseDesc,eo_project_test_case.updateTime,eo_project_test_case.caseType,eo_project_test_case_group.groupID,eo_project_test_case_group.parentGroupID,eo_project_test_case_group.groupName FROM eo_project_test_case LEFT JOIN eo_project_test_case_group ON eo_project_test_case_group.groupID = eo_project_test_case.groupID LEFT JOIN eo_conn_project ON eo_conn_project.userID = eo_project_test_case.userID AND eo_conn_project.projectID = eo_project_test_case.projectID LEFT JOIN eo_user ON eo_project_test_case.userID = eo_user.userID WHERE eo_project_test_case_group.groupID = ? OR (eo_project_test_case_group.parentGroupID = ? AND eo_project_test_case_group.isChild = 1) ORDER BY CONCAT(eo_project_test_case.caseName,eo_project_test_case.updateTime) DESC;", array(
+        $result = $db->prepareExecuteAll("SELECT eo_conn_project.partnerNickName,eo_user.userNickName,eo_project_test_case.caseID,eo_project_test_case.caseName,eo_project_test_case.caseDesc,eo_project_test_case.updateTime,eo_project_test_case.caseType,eo_project_test_case_group.groupID,eo_project_test_case_group.parentGroupID,eo_project_test_case_group.groupName FROM eo_project_test_case LEFT JOIN eo_project_test_case_group ON eo_project_test_case_group.groupID = eo_project_test_case.groupID LEFT JOIN eo_conn_project ON eo_conn_project.userID = eo_project_test_case.userID AND eo_conn_project.projectID = eo_project_test_case.projectID LEFT JOIN eo_user ON eo_project_test_case.userID = eo_user.userID WHERE eo_project_test_case_group.groupID = ? OR eo_project_test_case_group.parentGroupID = ? OR eo_project_test_case.groupID IN (SELECT eo_project_test_case_group.groupID FROM eo_project_test_case_group WHERE eo_project_test_case_group.parentGroupID IN (SELECT eo_project_test_case_group.groupID FROM eo_project_test_case_group WHERE eo_project_test_case_group.parentGroupID = ?)) ORDER BY CONCAT(eo_project_test_case.caseName,eo_project_test_case.updateTime) DESC;", array(
+            $group_id,
             $group_id,
             $group_id
         ));
-        if ($result)
+        if ($result) {
+            foreach ($result as &$case) {
+                $topParentGroupID = $db->prepareExecute('SELECT eo_project_test_case_group.parentGroupID FROM eo_project_test_case_group WHERE eo_project_test_case_group.groupID = ? AND eo_project_test_case_group.isChild = 1;', array(
+                    $case['parentGroupID']
+                ));
+                $case['topParentGroupID'] = $topParentGroupID['parentGroupID'] ? $topParentGroupID['parentGroupID'] : $case['parentGroupID'];
+            }
             return $result;
-        else
+        } else
             return FALSE;
     }
 
@@ -106,9 +113,15 @@ class AutomatedTestCaseDao
         $result = $db->prepareExecuteAll("SELECT eo_conn_project.partnerNickName,eo_user.userNickName,eo_project_test_case.caseID,eo_project_test_case.caseName,eo_project_test_case.caseDesc,eo_project_test_case.updateTime,eo_project_test_case.caseType,eo_project_test_case_group.groupID,eo_project_test_case_group.parentGroupID,eo_project_test_case_group.groupName FROM eo_project_test_case LEFT JOIN eo_project_test_case_group ON eo_project_test_case_group.groupID = eo_project_test_case.groupID LEFT JOIN eo_conn_project ON eo_project_test_case.userID = eo_conn_project.userID AND eo_conn_project.projectID = eo_project_test_case.projectID LEFT JOIN eo_user ON eo_project_test_case.userID = eo_user.userID WHERE eo_project_test_case.projectID = ? ORDER BY CONCAT(eo_project_test_case.caseName,eo_project_test_case.updateTime) DESC;", array(
             $project_id
         ));
-        if ($result)
+        if ($result) {
+            foreach ($result as &$case) {
+                $topParentGroupID = $db->prepareExecute('SELECT eo_project_test_case_group.parentGroupID FROM eo_project_test_case_group WHERE eo_project_test_case_group.groupID = ? AND eo_project_test_case_group.isChild = 1;', array(
+                    $case['parentGroupID']
+                ));
+                $case['topParentGroupID'] = $topParentGroupID['parentGroupID'] ? $topParentGroupID['parentGroupID'] : $case['parentGroupID'];
+            }
             return $result;
-        else
+        } else
             return FALSE;
     }
 
@@ -158,7 +171,7 @@ class AutomatedTestCaseDao
     public function getTestCaseName(&$case_ids)
     {
         $db = getDatabase();
-        $result = $db->prepareExecuteAll("SELECT GROUP_CONCAT(eo_project_test_case.caseName) FROM eo_project_test_case WHERE eo_project_test_case.caseID IN(" . $case_ids . ");");
+        $result = $db->prepareExecute("SELECT GROUP_CONCAT(eo_project_test_case.caseName) FROM eo_project_test_case WHERE eo_project_test_case.caseID IN(" . $case_ids . ");");
         if (empty($result))
             return FALSE;
         else
