@@ -1,4 +1,4 @@
-CREATE DATABASE  IF NOT EXISTS `api_doc` /*!40100 DEFAULT CHARACTER SET utf8mb4 */;
+CREATE DATABASE  IF NOT EXISTS `api_doc` /*!40100 DEFAULT CHARACTER SET utf8 */;
 USE `api_doc`;
 -- MySQL dump 10.13  Distrib 5.7.17, for Win64 (x86_64)
 --
@@ -560,6 +560,7 @@ CREATE TABLE `eo_database` (
   `dbName` varchar(255) NOT NULL,
   `dbVersion` float unsigned NOT NULL,
   `dbUpdateTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `databaseType` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`dbID`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -962,7 +963,8 @@ CREATE TABLE `eo_project_test_case_group_order` (
   `orderID` int(11) NOT NULL AUTO_INCREMENT,
   `projectID` int(11) NOT NULL,
   `orderList` text NOT NULL,
-  PRIMARY KEY (`orderID`,`projectID`)
+  PRIMARY KEY (`orderID`,`projectID`),
+  UNIQUE KEY `projectID` (`projectID`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -1046,7 +1048,7 @@ CREATE TABLE `eo_user` (
   `userPassword` varchar(60) NOT NULL,
   `userNickName` varchar(16) NOT NULL DEFAULT '',
   PRIMARY KEY (`userID`)
-) ENGINE=MyISAM AUTO_INCREMENT=3 DEFAULT CHARSET=utf8;
+) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1055,7 +1057,7 @@ CREATE TABLE `eo_user` (
 
 LOCK TABLES `eo_user` WRITE;
 /*!40000 ALTER TABLE `eo_user` DISABLE KEYS */;
-INSERT INTO `eo_user` VALUES (1,'admin','14e1b600b1fd579f47433b88e8d85291','超级管理员'),(2,'winter','af11c7c1a4d7c61c574ede14267f6fd2','winter2012');
+INSERT INTO `eo_user` VALUES (1,'admin','14e1b600b1fd579f47433b88e8d85291','超级管理员');
 /*!40000 ALTER TABLE `eo_user` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -1068,4 +1070,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2019-03-05 13:19:14
+-- Dump completed on 2019-03-27 16:31:05

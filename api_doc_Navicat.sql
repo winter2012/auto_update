@@ -10,7 +10,7 @@ Target Server Type    : MYSQL
 Target Server Version : 50553
 File Encoding         : 65001
 
-Date: 2019-03-05 13:20:06
+Date: 2019-03-27 16:28:25
 */
 
 SET FOREIGN_KEY_CHECKS=0;
@@ -384,6 +384,7 @@ CREATE TABLE `eo_database` (
   `dbName` varchar(255) NOT NULL,
   `dbVersion` float unsigned NOT NULL,
   `dbUpdateTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `databaseType` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`dbID`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
@@ -651,7 +652,8 @@ CREATE TABLE `eo_project_test_case_group_order` (
   `orderID` int(11) NOT NULL AUTO_INCREMENT,
   `projectID` int(11) NOT NULL,
   `orderList` text NOT NULL,
-  PRIMARY KEY (`orderID`,`projectID`)
+  PRIMARY KEY (`orderID`,`projectID`),
+  UNIQUE KEY `projectID` (`projectID`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
 -- ----------------------------
@@ -708,10 +710,9 @@ CREATE TABLE `eo_user` (
   `userPassword` varchar(60) NOT NULL,
   `userNickName` varchar(16) NOT NULL DEFAULT '',
   PRIMARY KEY (`userID`)
-) ENGINE=MyISAM AUTO_INCREMENT=3 DEFAULT CHARSET=utf8;
+) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=utf8;
 
 -- ----------------------------
 -- Records of eo_user
 -- ----------------------------
 INSERT INTO `eo_user` VALUES ('1', 'admin', '14e1b600b1fd579f47433b88e8d85291', '超级管理员');
-INSERT INTO `eo_user` VALUES ('2', 'winter', 'af11c7c1a4d7c61c574ede14267f6fd2', 'winter2012');
